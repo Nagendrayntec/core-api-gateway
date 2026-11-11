@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: core-api-gateway
+  profiles:
+    active: local
+  
+  cloud:
+    gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        corsConfigurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            maxAge: 3600
+app:
+  jwt:
+    secret: change_this_to_a_long_random_secret_change_this_to_at_least_32_chars_long

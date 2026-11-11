@@ -1,0 +1,157 @@
+server:
+  port: 2001
+spring:
+  application:
+    name: core-api-gateway
+  cloud:
+    config:
+      enabled: false
+    gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            maxAge: 3600
+      routes:
+
+        - id: idp-auth-service
+          uri: http://localhost:2002
+          predicates:
+            - Path=/api/idp-auth-service/**
+
+        - id: idp-user-service
+          uri: http://localhost:2003
+          predicates:
+            - Path=/api/idp-user-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: idp-masters-service
+          uri: http://localhost:2004
+          predicates:
+            - Path=/api/idp-masters-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: idp-org-service
+          uri: http://localhost:2005
+          predicates:
+            - Path=/api/idp-org-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: idp-authorization-service
+          uri: http://localhost:2006
+          predicates:
+            - Path=/api/idp-authz-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: idp-context-service
+          uri: http://localhost:2007
+          predicates:
+            - Path=/api/idp-context-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: idp-app-access-service
+          uri: http://localhost:2008
+          predicates:
+            - Path=/api/idp-app-access-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: idp-security-service
+          uri: http://localhost:2009
+          predicates:
+            - Path=/api/idp-security-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: idp-audit-risk-service
+          uri: http://localhost:2010
+          predicates:
+            - Path=/api/idp-audit-risk-service/**
+          filters:
+            - JwtAuthFilter
+
+
+
+        - id: core-notification-service
+          uri: http://localhost:2011
+          predicates:
+            - Path=/api/core-notification-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: core-media-service
+          uri: http://localhost:2012
+          predicates:
+            - Path=/api/core-media-service/**
+          filters:
+            - JwtAuthFilter
+
+
+        - id: vidhya-rbac-service
+          uri: http://localhost:2025
+          predicates:
+            - Path=/api/vidhya-rbac-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: vidhya-profile-service
+          uri: http://localhost:2021
+          predicates:
+            - Path=/api/vidhya-profile-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: vidhya-context-service
+          uri: http://localhost:2022
+          predicates:
+            - Path=/api/vidhya-context-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: vidhya-academic-service
+          uri: http://localhost:2023
+          predicates:
+            - Path=/api/vidhya-academic-service/**
+          filters:
+            - JwtAuthFilter
+        - id: vidhya-frontoffice-service
+          uri: http://localhost:2024
+          predicates:
+            - Path=/api/vidhya-frontoffice-service/**,/api/vidhya-front-office-management/**
+          filters:
+            - JwtAuthFilter
+
+        - id: vidhya-frontoffice-service
+          uri: http://localhost:2024
+          predicates:
+            - Path=/api/vidhya-frontoffice-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: vidhya-fee-service
+          uri: http://localhost:2026
+          predicates:
+            - Path=/api/vidhya-fee-service/**
+          filters:
+            - JwtAuthFilter
+
+        - id: vidhya-assessment-service
+          uri: http://localhost:2032
+          predicates:
+            - Path=/api/vidhya-assessment-service/**
+          filters:
+            - JwtAuthFilter
+
+app:
+  jwt:
+    secret: change_this_to_a_long_random_secret_change_this_to_at_least_32_chars_long
