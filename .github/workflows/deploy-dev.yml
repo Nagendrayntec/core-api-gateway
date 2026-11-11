@@ -1,0 +1,24 @@
+name: Deploy DEV
+
+on:
+  push:
+    branches:
+      - Dev
+      - Dev_token
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    # Pinned to a reviewed commit (SOC 2 F-14): a change to the shared workflow reaches this repository only when
+    # this line is updated in a reviewed pull request. Was @main.
+    uses: YnFintec-Core-Services/core-workflows/.github/workflows/deploy-dev.yml@80ceda0c5bca5504e18d305fcb433faaa50d7a39
+    with:
+      database_enabled: false
+      use_http2: false
+    secrets:
+      CORE_WORKFLOWS_PAT: ${{ secrets.CORE_WORKFLOWS_PAT }}
+      GH_PKG_READ_TOKEN: ${{ secrets.GH_PKG_READ_TOKEN }}
+      MANIFESTS_REPO_PAT: ${{ secrets.MANIFESTS_REPO_PAT }}

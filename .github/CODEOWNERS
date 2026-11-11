@@ -1,0 +1,14 @@
+# Code owners (SOC 2 CC1.3 / CC8.1). A pull request that touches a file below needs an approving review from one of
+# its owners. GitHub enforces this only when branch protection on Dev/Staging/main has "Require review from Code
+# Owners" switched on (repository settings, owner step). Later lines win over earlier ones.
+# Owners are the people who did the identity and security work on this platform; replace them with the agreed
+# owners or teams (e.g. @YnFintec-Core-Services/security) once those are named.
+
+*                                   @Nagendrayntec @Krishnarjun-yntec @sathesh1978 @infoyntec
+
+# Security-sensitive: access rules, identity, tokens, secrets handling, pipelines, images and schema changes.
+/.github/                           @Nagendrayntec @Krishnarjun-yntec @sathesh1978 @infoyntec
+/Dockerfile                         @Nagendrayntec @Krishnarjun-yntec @sathesh1978 @infoyntec
+**/security/                        @Nagendrayntec @Krishnarjun-yntec @sathesh1978 @infoyntec
+**/SecurityConfig*                  @Nagendrayntec @Krishnarjun-yntec @sathesh1978 @infoyntec
+**/db/migration/                    @Nagendrayntec @Krishnarjun-yntec @sathesh1978 @infoyntec
