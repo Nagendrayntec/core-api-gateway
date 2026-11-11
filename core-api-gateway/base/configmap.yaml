@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+data:
+  CORE_AI_RUNTIME_SERVICE_URL: http://core-ai-runtime.core.svc.cluster.local:8000
+  CORE_CHAT_SERVICE_URL: http://core-chat-service.core.svc.cluster.local:8080
+  CORE_MAIL_SERVICE_URL: http://core-mail-service.core.svc.cluster.local:8092
+  CORE_MEDIA_SERVICE_URL: http://core-media-service.core.svc.cluster.local:8080
+  CORE_NOTIFICATION_SERVICE_URL: http://core-notification-service.core.svc.cluster.local:8080
+  CORE_RBAC_SERVICE_URL: http://core-rbac-service.core.svc.cluster.local:8080
+  CORE_TICKETING_SERVICE_URL: http://core-ticketing-service.core.svc.cluster.local:8080
+  CORE_COLLABORATION_SERVICE_URL: http://core-collaboration-service.core.svc.cluster.local:2058
+  CORE_DOC_SERVICE_URL: http://core-doc-service.core.svc.cluster.local:2059
+  CORE_SHEET_SERVICE_URL: http://core-sheet-service.core.svc.cluster.local:2057
+  CORE_WORKFLOW_SERVICE_URL: http://core-workflow-service.core.svc.cluster.local:2056
+  CORE_WEBHOOK_SERVICE_URL: http://core-webhook-service.core.svc.cluster.local:8080
+  CORE_WORKSPACE_SERVICE_URL: http://core-workspace-service.core.svc.cluster.local:2054
+  CORE_VOICE_SERVICE_URL: http://core-voice-service.core.svc.cluster.local:8080
+  CORE_SLIDE_SERVICE_URL: http://core-slide-service.core.svc.cluster.local:2060
+  # DEV rate limits sized for ~1,000 concurrent chat users. The defaults (100 req/s per client app, 100 per
+  # organization, 60 per branch) are shared by everyone in that app/org/branch, so 1,000 users in one
+  # organization hit HTTP 429 long before any service is stressed. The per-user limit is unchanged.
+  GATEWAY_APP_RATE_LIMIT_BURST: "6000"
+  GATEWAY_APP_RATE_LIMIT_REPLENISH: "3000"
+  GATEWAY_BRANCH_RATE_LIMIT_BURST: "3000"
+  GATEWAY_BRANCH_RATE_LIMIT_REPLENISH: "1500"
+  GATEWAY_ORG_RATE_LIMIT_BURST: "3000"
+  GATEWAY_ORG_RATE_LIMIT_REPLENISH: "1500"
+  IDP_APP_ACCESS_SERVICE_URL: http://idp-app-access-service.idp.svc.cluster.local:8080
+  IDP_AUDIT_RISK_SERVICE_URL: http://idp-audit-risk-service.idp.svc.cluster.local:8080
+  IDP_AUTH_SERVICE_URL: http://idp-auth-service.idp.svc.cluster.local:8080
+  IDP_AUTHORIZATION_SERVICE_URL: http://idp-authorization-service.idp.svc.cluster.local:8080
+  IDP_CONTEXT_SERVICE_URL: http://idp-context-service.idp.svc.cluster.local:8080
+  IDP_JWKS_URL: http://idp-auth-service.idp.svc.cluster.local:8080/.well-known/jwks.json
+  IDP_MASTERS_SERVICE_URL: http://idp-masters-service.idp.svc.cluster.local:8080
+  IDP_ORG_SERVICE_URL: http://idp-org-service.idp.svc.cluster.local:8080
+  IDP_SECURITY_SERVICE_URL: http://idp-security-service.idp.svc.cluster.local:8080
+  IDP_USER_SERVICE_URL: http://idp-user-service.idp.svc.cluster.local:8080
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:InitialRAMPercentage=25 -XX:+ExitOnOutOfMemoryError"
+  JWT_EXPIRY: "900"
+  JWT_ISSUER: https://idp-dev.yntec.in/api/idp-auth-service
+  JWT_REFRESH_EXPIRY: "604800"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY: INFO
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: INFO
+  MANAGEMENT_ZIPKIN_TRACING_EXPORT_ENABLED: "false"
+  PORT: "8080"
+  SERVER_PORT: "8080"
+  REDIS_HOST: valkey.data.svc.cluster.local
+  REDIS_PORT: "6379"
+  SPRING_CLOUD_GATEWAY_FILTER_REQUEST_RATE_LIMITER_DENY_EMPTY_KEY: "false"
+  SPRING_CLOUD_GATEWAY_FILTER_REQUESTRATELIMITER_DENYEMPTYKEY: "false"
+  SPRING_PROFILES_ACTIVE: dev
+  VIDHYA_ACADEMIC_SERVICE_URL: http://vidhya-academic-service.vidhya.svc.cluster.local:8080
+  VIDHYA_ASSESSMENTS_SERVICE_URL: http://vidhya-assessments-service.vidhya.svc.cluster.local:8080
+  VIDHYA_ATTENDANCE_SERVICE_URL: http://vidhya-attendance-service.vidhya.svc.cluster.local:8080
+  VIDHYA_CONTEXT_SERVICE_URL: http://vidhya-context-service.vidhya.svc.cluster.local:8080
+  VIDHYA_FEE_SERVICE_URL: http://vidhya-fee-service.vidhya.svc.cluster.local:8080
+  VIDHYA_FRONTOFFICE_SERVICE_URL: http://vidhya-frontoffice-service.vidhya.svc.cluster.local:8080
+  VIDHYA_PROFILE_SERVICE_URL: http://vidhya-profile-service.vidhya.svc.cluster.local:8080
+  VIDHYA_RBAC_SERVICE_URL: http://vidhya-rbac-service.vidhya.svc.cluster.local:8080
+  VIDHYA_TIMETABLE_SERVICE_URL: http://vidhya-timetable-service.vidhya.svc.cluster.local:8080
+  VIDHYA_TRANSPORT_SERVICE_URL: http://vidhya-transport-service.vidhya.svc.cluster.local:8080
+  YNTECH_REPORTING_SERVICE_URL: http://yntech-reporting-service.core.svc.cluster.local:8080
+  # Added from Dev_token (BFF, Valkey names, new services); the REDIS_* keys above stay for older images.
+  CORE_ACCESS_GOVERNANCE_SERVICE_URL: http://core-access-governance-service.core.svc.cluster.local:8080
+  IDP_FEDERATION_SERVICE_URL: http://idp-federation-service.idp.svc.cluster.local:8080
+  IDP_PROVISIONING_SERVICE_URL: http://idp-provisioning-service.idp.svc.cluster.local:8080
+  # BFF session layer (BFF_TOKEN_REMOVAL_IMPLEMENTATION_PLAN.md). OFF until the refresh-token key secret
+  # below exists and Valkey has persistence + a password; flip BFF_ENABLED to "true" to turn it on.
+  # With it off the gateway behaves exactly as before. Lockdown (Phase 3) = set both flags below to "false"
+  # once idp-webapp and setu-webapp are migrated.
+  BFF_ENABLED: "false"
+  BFF_BEARER_FROM_BROWSER_ENABLED: "true"
+  BFF_CAPTURE_REQUIRES_HEADER: "true"
+  BFF_SESSION_TTL: 7d
+  BFF_SESSION_MAX_AGE: 30d
+  BFF_MAX_STREAM_AGE: 10m
+  # Outage grace
+  BFF_OUTAGE_GRACE: 10m
+  # Kafka disabled for VM test environment so deployment is never blocked
+  BFF_REVOCATION_KAFKA_ENABLED: "false"
+  BFF_AUDIT_KAFKA_ENABLED: "false"
+  KAFKA_BOOTSTRAP_SERVERS: ""
+  VALKEY_HOST: valkey.data.svc.cluster.local
+  VALKEY_PORT: "6379"
+  CORE_TRANSLATION_SERVICE_URL: http://core-translation-service.core.svc.cluster.local:8000

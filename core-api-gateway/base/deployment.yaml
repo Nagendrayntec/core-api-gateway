@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: core-api-gateway
+  template:
+    metadata:
+      labels:
+        app: core-api-gateway
+    spec:
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: app
+        image: us-central1-docker.pkg.dev/vidhya-shared/services/core-api-gateway:placeholder
+        envFrom:
+        - configMapRef:
+            name: gateway-config
+        env:
+        # BFF: AES-256 key (base64, 32 bytes) that encrypts refresh tokens stored in Valkey. The Secret
+        # `core-api-gateway-secrets` is created on the cluster, never committed. optional: true so the
+        # gateway still starts (with BFF_ENABLED=false) before the Secret exists; with BFF_ENABLED=true and
+        # no key, logins fail closed (HTTP 502) rather than storing refresh tokens in clear.
+        #   kubectl -n core create secret generic core-api-gateway-secrets \
+        #     --from-literal=bff-refresh-token-key="$(openssl rand -base64 32)"
+        - name: BFF_REFRESH_TOKEN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: core-api-gateway-secrets
+              key: bff-refresh-token-key
+              optional: true
+        # Key rotation: put the old key here and the new one above, then redeploy; sessions written with
+        # the old key stay readable. Remove once all old sessions have expired (max 30 days).
+        - name: BFF_REFRESH_TOKEN_KEY_PREVIOUS
+          valueFrom:
+            secretKeyRef:
+              name: core-api-gateway-secrets
+              key: bff-refresh-token-key-previous
+              optional: true
+        # Valkey access (standard Spring Boot variables). Set once Valkey has requirepass/TLS.
+        - name: VALKEY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: core-api-gateway-secrets
+              key: valkey-password
+              optional: true
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 512Mi

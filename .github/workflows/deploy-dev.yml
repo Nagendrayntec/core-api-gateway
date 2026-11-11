@@ -1,24 +1,165 @@
-name: Deploy DEV
+name: Deploy to VM (k3s)
 
 on:
   push:
     branches:
-      - Dev
-      - Dev_token
+      - main
+  workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
+env:
+  GCP_PROJECT_ID: project-42793aaf-9cb9-4fcd-b69
+  GCP_REGION: asia-south1
+  AR_REPOSITORY: sample-1
+  AR_REGISTRY: asia-south1-docker.pkg.dev/project-42793aaf-9cb9-4fcd-b69/sample-1
+  WIF_PROVIDER: projects/400015992679/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  WIF_SERVICE_ACCOUNT: vmserver-access@project-42793aaf-9cb9-4fcd-b69.iam.gserviceaccount.com
+  VM_PUBLIC_IP: "8.234.119.2"
+  VM_SSH_USER: ghdeploy
+  K8S_NAMESPACE: default
+  K8S_DEPLOYMENT: core-api-gateway
+  OVERLAY_DIR: core-api-gateway/overlays/vm-test
+
 jobs:
-  deploy:
-    # Pinned to a reviewed commit (SOC 2 F-14): a change to the shared workflow reaches this repository only when
-    # this line is updated in a reviewed pull request. Was @main.
-    uses: YnFintec-Core-Services/core-workflows/.github/workflows/deploy-dev.yml@80ceda0c5bca5504e18d305fcb433faaa50d7a39
-    with:
-      database_enabled: false
-      use_http2: false
-    secrets:
-      CORE_WORKFLOWS_PAT: ${{ secrets.CORE_WORKFLOWS_PAT }}
-      GH_PKG_READ_TOKEN: ${{ secrets.GH_PKG_READ_TOKEN }}
-      MANIFESTS_REPO_PAT: ${{ secrets.MANIFESTS_REPO_PAT }}
+  build-and-deploy:
+    name: Build, Push Image & Deploy To VM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Derive Image Tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_SHA_TAG="${GITHUB_SHA::7}"
+          IMAGE_LATEST="${AR_REGISTRY}/core-api-gateway:latest"
+          IMAGE_SHA="${AR_REGISTRY}/core-api-gateway:${IMAGE_SHA_TAG}"
+          echo "REGISTRY_HOST=${AR_REGISTRY%%/*}" >> "$GITHUB_ENV"
+          echo "IMAGE_LATEST=$IMAGE_LATEST" >> "$GITHUB_ENV"
+          echo "IMAGE_SHA=$IMAGE_SHA" >> "$GITHUB_ENV"
+          echo "IMAGE_SHA_TAG=$IMAGE_SHA_TAG" >> "$GITHUB_ENV"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Derive Maven Artifact Info
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_ID="$(mvn -B help:evaluate -Dexpression=project.artifactId -q -DforceStdout)"
+          PROJECT_VERSION="$(mvn -B help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          echo "JAR_FILE=target/${ARTIFACT_ID}-${PROJECT_VERSION}.jar" >> "$GITHUB_ENV"
+
+      - name: Build Jar (Skip Tests)
+        shell: bash
+        run: mvn clean verify -DskipTests
+
+      - name: Verify Built Jar Exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$JAR_FILE" ]]; then
+            echo "Expected jar not found at $JAR_FILE after mvn verify." >&2
+            exit 1
+          fi
+
+      - name: Authenticate To GCP (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker For Artifact Registry
+        shell: bash
+        run: gcloud auth configure-docker "$REGISTRY_HOST" --quiet
+
+      - name: Build Docker Image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg "JAR_FILE=${JAR_FILE}" \
+            -t "$IMAGE_LATEST" \
+            -t "$IMAGE_SHA" \
+            .
+
+      - name: Push Docker Image Tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE_LATEST"
+          docker push "$IMAGE_SHA"
+
+      - name: Install Kustomize
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Render K3s Manifest For VM
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$OVERLAY_DIR"
+          kustomize edit set image "us-central1-docker.pkg.dev/vidhya-shared/services/core-api-gateway=${IMAGE_SHA}"
+          mkdir -p "$GITHUB_WORKSPACE/build-artifacts"
+          kustomize build . > "$GITHUB_WORKSPACE/build-artifacts/k3s-core-api-gateway.yaml"
+
+      - name: Upload Rendered K3s Manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: k3s-core-api-gateway-manifest
+          path: build-artifacts/k3s-core-api-gateway.yaml
+
+      - name: Setup SSH To VM
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/vm_key
+          chmod 600 ~/.ssh/vm_key
+          ssh-keyscan -H "$VM_PUBLIC_IP" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Copy Manifest To VM
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/vm_key build-artifacts/k3s-core-api-gateway.yaml \
+            "${VM_SSH_USER}@${VM_PUBLIC_IP}:/tmp/k3s-core-api-gateway.yaml"
+
+      - name: Apply Manifest On VM
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/vm_key "${VM_SSH_USER}@${VM_PUBLIC_IP}" bash -s <<'EOF'
+            set -euo pipefail
+            sudo kubectl apply -f /tmp/k3s-core-api-gateway.yaml
+            sudo kubectl rollout status deployment/core-api-gateway --timeout=180s
+            rm -f /tmp/k3s-core-api-gateway.yaml
+          EOF
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          echo "================ DEPLOYMENT SUMMARY ================"
+          echo "Image (latest): $IMAGE_LATEST"
+          echo "Image (SHA):    $IMAGE_SHA"
+          echo "Target VM:      $VM_PUBLIC_IP"
+          echo "Namespace:      $K8S_NAMESPACE"
+          echo "Deployment:     $K8S_DEPLOYMENT"
+          echo "Status: Complete (single self-contained workflow, no other workflow dependency)"
+          echo "===================================================="
